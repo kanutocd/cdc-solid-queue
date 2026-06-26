@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.1.2 Unreleased
+## Unreleased
+
+## 0.1.2
 
 - Minimal Rails app example.
 - Local smoke tests.
