@@ -31,10 +31,25 @@ namespace :rbs do
   end
 end
 
+namespace :smoke do
+  desc 'Run local smoke tests'
+  task :local do
+    ruby 'smoke_tests/enqueue_smoke.rb'
+    ruby 'smoke_tests/runner_checkpoint_smoke.rb'
+  end
+end
+
+namespace :benchmark do
+  desc 'Benchmark enqueue serialization and dispatch overhead'
+  task :enqueue do
+    ruby 'benchmark/enqueue_benchmark.rb'
+  end
+end
+
 desc 'Run tests with strict line and branch coverage thresholds'
 task :coverage do
   sh({ 'COVERAGE' => 'true' }, 'bundle exec rake test')
 end
 
-task quality: %i[rubocop coverage rbs:validate yard_coverage]
+task quality: %i[rubocop coverage smoke:local rbs:validate yard_coverage]
 task default: :quality

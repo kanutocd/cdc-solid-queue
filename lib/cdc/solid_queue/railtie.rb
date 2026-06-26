@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
-require 'rails/railtie'
+require_relative '../solid_queue'
+begin
+  require 'rails/railtie'
+rescue LoadError
+  Rails::Railtie
+end
 
 module CDC
   module SolidQueue

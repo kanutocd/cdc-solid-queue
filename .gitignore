@@ -10,3 +10,4 @@
 *.gem
 /.ignoreme/
 Gemfile.lock
+/examples/.env

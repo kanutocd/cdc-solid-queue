@@ -4,6 +4,7 @@ source 'https://rubygems.org'
 
 gemspec
 
+gem 'benchmark', '~> 0.4'
 gem 'minitest', '~> 6.0'
 gem 'rake', '~> 13.4'
 gem 'rbs', '~> 4.0'

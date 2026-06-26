@@ -10,7 +10,7 @@ Minitest.after_run do
   result = Coverage.result
   project = File.expand_path('..', __dir__)
   lib = File.join(project, 'lib')
-  files = result.select { |path, _coverage| path.start_with?(lib) }
+  files = result.select { |path, _coverage| path.start_with?(lib) && path.end_with?('.rb') }
 
   line_total = 0
   line_hit = 0

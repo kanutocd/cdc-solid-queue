@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 Unreleased
+
+- Minimal Rails app example.
+- Local smoke tests.
+- Enqueue overhead benchmark.
+
 ## 0.1.1
 
 - Initial implementation skeleton.

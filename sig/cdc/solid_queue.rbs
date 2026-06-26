@@ -152,6 +152,10 @@ module CDC
       def metadata_value: (untyped metadata, Symbol name) -> untyped
     end
 
+    module CLI
+      def self.start: () -> Integer
+    end
+
     class Railtie < ::Rails::Railtie
     end
   end

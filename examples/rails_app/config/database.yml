@@ -1,0 +1,10 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  url: <%= ENV.fetch("DATABASE_URL", "postgres://postgres:postgres@127.0.0.1:55432/cdc_solid_queue_example") %>
+
+development:
+  <<: *default
+
+test:
+  <<: *default

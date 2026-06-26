@@ -9,6 +9,7 @@ require_relative 'solid_queue/enqueuer'
 require_relative 'solid_queue/processor_job'
 require_relative 'solid_queue/postgresql_stream'
 require_relative 'solid_queue/runner'
+require_relative 'solid_queue/cli'
 
 # Namespace for Change Data Capture integrations.
 module CDC
