@@ -63,7 +63,9 @@ module CDC
       def self.normalize_hash(value)
         case value
         when Hash
-          value.each_with_object({}) do |(key, child), normalized|
+          # @type var normalized: Hash[String, untyped]
+          normalized = {}
+          value.each_with_object(normalized) do |(key, child), normalized|
             normalized[key.to_s] = normalize_hash(child)
           end
         when Array

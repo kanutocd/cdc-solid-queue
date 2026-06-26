@@ -8,7 +8,9 @@ module CDC
     # describes the target job class, Solid Queue queue name, ordering behavior,
     # and PostgreSQL replication settings.
     class Configuration
+      # The only CDC source supported by the initial implementation.
       SUPPORTED_SOURCE = :postgresql
+      # Supported ordering scopes for serialized CDC events.
       ORDERING_KEYS = %i[identity primary_key relation transaction global none].freeze
 
       attr_accessor :processor_job, :queue, :preserve_order, :ordering_key, :postgresql
@@ -27,12 +29,15 @@ module CDC
       # @return [true]
       # @raise [ConfigurationError] if required values are missing
       # @raise [UnsupportedSourceError] if a non-PostgreSQL source is supplied
+      # rubocop:disable Naming/PredicateMethod
       def validate!
         validate_processor_job!
         validate_queue!
         validate_ordering_key!
         validate_postgresql!
+        true
       end
+      # rubocop:enable Naming/PredicateMethod
 
       # Return a normalized source name.
       #

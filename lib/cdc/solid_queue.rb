@@ -8,6 +8,7 @@ require_relative 'solid_queue/enqueuer'
 require_relative 'solid_queue/processor_job'
 require_relative 'solid_queue/runner'
 
+# Namespace for Change Data Capture integrations.
 module CDC
   # Rails-native durable CDC job backend built on Solid Queue.
   module SolidQueue

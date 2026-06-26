@@ -24,7 +24,7 @@ class ConfigurationTest < Minitest::Test
     config = valid_config(JobWithLater)
 
     assert_silent do
-      config.validate!
+      assert config.validate!
     end
   end
 

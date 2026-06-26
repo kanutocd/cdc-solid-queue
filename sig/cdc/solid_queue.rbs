@@ -31,12 +31,23 @@ module CDC
       def initialize: () -> void
       def validate!: () -> true
       def source: () -> Symbol
+
+      private
+
+      def validate_processor_job!: () -> nil
+      def validate_queue!: () -> nil
+      def validate_ordering_key!: () -> nil
+      def validate_postgresql!: () -> nil
     end
 
     class EventSerializer
       def self.dump: (untyped event) -> Hash[String, untyped]
       def self.load: (Hash[untyped, untyped] payload) -> Hash[String, untyped]
       def self.ordering_value: (Hash[untyped, untyped] payload, Symbol key) -> untyped
+
+      private
+
+      def self.normalize_hash: (untyped value) -> untyped
     end
 
     class Enqueuer
@@ -46,7 +57,7 @@ module CDC
     end
 
     module ProcessorJob
-      def self.included: (Class base) -> void
+      def self.included: (untyped base) -> void
       def perform: (Hash[untyped, untyped] payload) -> untyped
       def process: (Hash[String, untyped] event) -> untyped
     end
