@@ -13,7 +13,7 @@ module CDC
       # Supported ordering scopes for serialized CDC events.
       ORDERING_KEYS = %i[identity primary_key relation transaction global none].freeze
 
-      attr_accessor :processor_job, :queue, :preserve_order, :ordering_key, :postgresql
+      attr_accessor :processor_job, :queue, :preserve_order, :ordering_key, :postgresql, :checkpoint
 
       # Build a configuration with safe defaults.
       def initialize
@@ -22,6 +22,7 @@ module CDC
         @preserve_order = true
         @ordering_key = :identity
         @postgresql = {}
+        @checkpoint = Checkpoint.new
       end
 
       # Validate this configuration.
@@ -35,6 +36,7 @@ module CDC
         validate_queue!
         validate_ordering_key!
         validate_postgresql!
+        validate_checkpoint!
         true
       end
       # rubocop:enable Naming/PredicateMethod
@@ -72,6 +74,12 @@ module CDC
         return unless @postgresql.empty?
 
         raise ConfigurationError, 'postgresql settings are required'
+      end
+
+      def validate_checkpoint!
+        return if @checkpoint.nil? || @checkpoint.respond_to?(:advance)
+
+        raise ConfigurationError, 'checkpoint must respond to advance'
       end
     end
   end

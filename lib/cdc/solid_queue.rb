@@ -2,10 +2,12 @@
 
 require_relative 'solid_queue/version'
 require_relative 'solid_queue/error'
-require_relative 'solid_queue/configuration'
 require_relative 'solid_queue/event_serializer'
+require_relative 'solid_queue/checkpoint'
+require_relative 'solid_queue/configuration'
 require_relative 'solid_queue/enqueuer'
 require_relative 'solid_queue/processor_job'
+require_relative 'solid_queue/postgresql_stream'
 require_relative 'solid_queue/runner'
 
 # Namespace for Change Data Capture integrations.

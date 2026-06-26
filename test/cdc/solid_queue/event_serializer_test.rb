@@ -64,6 +64,10 @@ class EventSerializerTest < Minitest::Test
   def test_ordering_value_none
     assert_nil CDC::SolidQueue::EventSerializer.ordering_value({ identity: 1 }, :none)
   end
+
+  def test_enqueue_metadata_returns_empty_hash_for_plain_payload
+    assert_equal({}, CDC::SolidQueue::EventSerializer.enqueue_metadata(id: 1))
+  end
 end
 
 class EventSerializerAdditionalCoverageTest < Minitest::Test

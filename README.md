@@ -29,7 +29,7 @@ class UserChangedJob < ApplicationJob
   include CDC::SolidQueue::ProcessorJob
 
   def process(event)
-    # event is a serialized CDC event Hash
+    # event is a CDC::Core::ChangeEvent
   end
 end
 ```
@@ -40,16 +40,41 @@ CDC::SolidQueue.configure do |config|
   config.queue = "cdc"
   config.preserve_order = true
   config.ordering_key = :identity
+  config.checkpoint = CDC::SolidQueue::Checkpoint.new
   config.postgresql = {
+    database_url: ENV.fetch("DATABASE_URL"),
     slot: "cdc_solid_queue",
     publication: "cdc_publication"
   }
 end
 ```
 
+`config.queue` is applied through Active Job's `set(queue:)` API when the job
+class supports it. When `preserve_order` is enabled, the enqueued payload also
+includes cdc-solid-queue metadata with the configured ordering key and computed
+ordering value.
+
+## Rails Task
+
+Rails applications can load the Railtie integration:
+
+```ruby
+require "cdc/solid_queue/railtie"
+```
+
+Then start ingestion with:
+
+```bash
+bin/rails cdc_solid_queue:start
+```
+
+The task wires `Pgoutput::Client::Runner`, `Pgoutput::RelationTracker`,
+`Pgoutput::Decoder`, and `Pgoutput::SourceAdapter::Cdc` into the
+`CDC::SolidQueue::Runner`.
+
 ## MVP Checkpoint Rule
 
-A checkpoint may advance after the Solid Queue job is durably inserted. Job execution success is handled by Solid Queue retry semantics.
+A checkpoint advances after the Solid Queue job is durably inserted. Job execution success is handled by Solid Queue retry semantics.
 
 ## Quality Gates
 

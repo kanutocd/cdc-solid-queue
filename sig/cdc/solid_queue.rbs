@@ -1,3 +1,36 @@
+module Rails
+  class Railtie
+    def self.rake_tasks: () { () -> untyped } -> untyped
+  end
+end
+
+module Pgoutput
+  class RelationTracker
+    def initialize: () -> void
+    def process: (untyped payload) -> untyped
+  end
+
+  class Decoder
+    def initialize: (?type_registry: untyped) -> void
+    def decode: (untyped message) -> untyped
+  end
+
+  module Client
+    class Runner
+      attr_reader configuration: untyped
+      def initialize: (**untyped options) -> void
+      def start: () { (String payload, untyped metadata) -> untyped } -> void
+    end
+  end
+
+  module SourceAdapter
+    class Cdc
+      def initialize: (?primary_key_resolver: untyped, ?metadata_builder: untyped) -> void
+      def normalize: (untyped event) -> untyped
+    end
+  end
+end
+
 module CDC
   module SolidQueue
     VERSION: String
@@ -27,6 +60,7 @@ module CDC
       attr_accessor preserve_order: bool
       attr_accessor ordering_key: Symbol
       attr_accessor postgresql: Hash[Symbol, untyped]
+      attr_accessor checkpoint: untyped
 
       def initialize: () -> void
       def validate!: () -> true
@@ -38,22 +72,48 @@ module CDC
       def validate_queue!: () -> nil
       def validate_ordering_key!: () -> nil
       def validate_postgresql!: () -> nil
+      def validate_checkpoint!: () -> nil
     end
 
     class EventSerializer
+      INTERNAL_METADATA_KEY: String
+
       def self.dump: (untyped event) -> Hash[String, untyped]
       def self.load: (Hash[untyped, untyped] payload) -> Hash[String, untyped]
+      def self.load_event: (Hash[untyped, untyped] payload) -> untyped
+      def self.with_enqueue_metadata: (Hash[untyped, untyped] payload, Hash[untyped, untyped] metadata) -> Hash[String, untyped]
+      def self.enqueue_metadata: (Hash[untyped, untyped] payload) -> Hash[String, untyped]
       def self.ordering_value: (Hash[untyped, untyped] payload, Symbol key) -> untyped
 
       private
 
       def self.normalize_hash: (untyped value) -> untyped
+      def self.build_change_event: (Hash[String, untyped] normalized) -> untyped
+      def self.strip_internal_metadata: (Hash[String, untyped] payload) -> Hash[String, untyped]
+      def self.change_event_payload?: (Hash[String, untyped] payload) -> bool
+    end
+
+    class Checkpoint
+      attr_reader position: untyped
+      def initialize: () -> void
+      def advance: (untyped event, ?untyped result) -> untyped
+
+      private
+
+      def position_for: (untyped event) -> untyped
+      def result_position: (untyped result) -> untyped
     end
 
     class Enqueuer
       attr_reader configuration: Configuration
       def initialize: (Configuration configuration) -> void
       def enqueue: (untyped event) -> untyped
+
+      private
+
+      def async_job: (untyped job) -> untyped
+      def enqueue_metadata: (Hash[untyped, untyped] payload) -> Hash[String, untyped]
+      def ordering_value: (Hash[untyped, untyped] payload) -> untyped
     end
 
     module ProcessorJob
@@ -65,6 +125,34 @@ module CDC
     class Runner
       def initialize: (stream: untyped, enqueuer: Enqueuer) -> void
       def start: () -> Integer
+
+      private
+
+      def checkpoint: (untyped event, untyped result) -> untyped
+    end
+
+    class PostgresqlStream
+      def initialize: (
+        Configuration configuration,
+        ?client_runner: untyped,
+        ?relation_tracker: untyped,
+        ?decoder: untyped,
+        ?adapter: untyped
+      ) -> void
+      def each: () { (untyped event) -> untyped } -> void
+              | () -> Enumerator[untyped, void]
+
+      private
+
+      def build_client_runner: () -> untyped
+      def postgresql_options: () -> Hash[Symbol, untyped]
+      def build_adapter: () -> untyped
+      def normalize: (untyped payload) -> untyped
+      def metadata_for: (untyped event) -> Hash[String, untyped]
+      def metadata_value: (untyped metadata, Symbol name) -> untyped
+    end
+
+    class Railtie < ::Rails::Railtie
     end
   end
 end

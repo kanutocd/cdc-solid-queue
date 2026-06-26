@@ -27,18 +27,67 @@ class EnqueuerTest < Minitest::Test
     end
   end
 
+  SettableJob = Class.new do
+    @payloads = []
+    @queues = []
+    class << self
+      attr_reader :payloads, :queues
+
+      def set(queue:)
+        @queues << queue
+        self
+      end
+
+      def perform_later(payload)
+        @payloads << payload
+        :later
+      end
+
+      def reset!
+        @payloads = []
+        @queues = []
+      end
+    end
+  end
+
+  def setup
+    SettableJob.reset!
+  end
+
   def test_enqueue_uses_perform_later
     enqueuer = CDC::SolidQueue::Enqueuer.new(config_for(LaterJob))
 
     assert_equal :later, enqueuer.enqueue(id: 1)
-    assert_equal({ 'id' => 1 }, LaterJob.payloads.last)
+    assert_equal({ 'id' => 1 }, CDC::SolidQueue::EventSerializer.load(LaterJob.payloads.last))
   end
 
   def test_enqueue_falls_back_to_perform_now
     enqueuer = CDC::SolidQueue::Enqueuer.new(config_for(NowJob))
 
     assert_equal :now, enqueuer.enqueue(id: 2)
-    assert_equal({ 'id' => 2 }, NowJob.payloads.last)
+    assert_equal({ 'id' => 2 }, CDC::SolidQueue::EventSerializer.load(NowJob.payloads.last))
+  end
+
+  def test_enqueue_sets_active_job_queue_and_metadata
+    config = config_for(SettableJob)
+    config.queue = 'critical_cdc'
+    enqueuer = CDC::SolidQueue::Enqueuer.new(config)
+
+    assert_equal :later, enqueuer.enqueue(identity: 42)
+    assert_equal ['critical_cdc'], SettableJob.queues
+    metadata = CDC::SolidQueue::EventSerializer.enqueue_metadata(SettableJob.payloads.last)
+
+    assert_equal expected_metadata('critical_cdc', 42), metadata
+  end
+
+  def test_enqueue_omits_ordering_value_when_ordering_is_disabled
+    config = config_for(SettableJob)
+    config.preserve_order = false
+    enqueuer = CDC::SolidQueue::Enqueuer.new(config)
+
+    enqueuer.enqueue(identity: 42)
+
+    assert_nil CDC::SolidQueue::EventSerializer.enqueue_metadata(SettableJob.payloads.last)['ordering_value']
   end
 
   def test_initialize_validates_configuration
@@ -54,5 +103,14 @@ class EnqueuerTest < Minitest::Test
       config.processor_job = job
       config.postgresql = { slot: 'cdc' }
     end
+  end
+
+  def expected_metadata(queue, ordering_value)
+    {
+      'queue' => queue,
+      'preserve_order' => true,
+      'ordering_key' => :identity,
+      'ordering_value' => ordering_value
+    }
   end
 end

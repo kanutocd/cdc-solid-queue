@@ -76,6 +76,14 @@ class ConfigurationTest < Minitest::Test
     assert_match(/postgresql/, error.message)
   end
 
+  def test_rejects_invalid_checkpoint
+    config = valid_config(JobWithLater)
+    config.checkpoint = Object.new
+
+    error = assert_raises(CDC::SolidQueue::ConfigurationError) { config.validate! }
+    assert_match(/checkpoint/, error.message)
+  end
+
   private
 
   def valid_config(job)

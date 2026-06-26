@@ -36,6 +36,15 @@ class ProcessorJobTest < Minitest::Test
     assert_equal({ 'id' => 1 }, job.processed)
   end
 
+  def test_perform_rehydrates_change_event_payload
+    job = QueueAwareJob.new
+    event = CDC::Core::ChangeEvent.new(operation: :insert, schema: 'public', table: 'users')
+
+    assert_equal :processed, job.perform(event.to_h)
+    assert_instance_of CDC::Core::ChangeEvent, job.processed
+    assert_equal 'public.users', job.processed.qualified_table_name
+  end
+
   def test_process_must_be_implemented
     error = assert_raises(NotImplementedError) { PlainJob.new.perform(id: 1) }
     assert_match(/must implement/, error.message)

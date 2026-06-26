@@ -19,10 +19,34 @@ module CDC
       # @return [Object] Active Job return value
       def enqueue(event)
         payload = EventSerializer.dump(event)
+        payload = EventSerializer.with_enqueue_metadata(payload, enqueue_metadata(payload))
         job = configuration.processor_job
-        return job.perform_later(payload) if job.respond_to?(:perform_later)
+        return async_job(job).perform_later(payload) if job.respond_to?(:perform_later)
 
         job.perform_now(payload)
+      end
+
+      private
+
+      def async_job(job)
+        return job.set(queue: configuration.queue) if job.respond_to?(:set)
+
+        job
+      end
+
+      def enqueue_metadata(payload)
+        {
+          'queue' => configuration.queue,
+          'preserve_order' => configuration.preserve_order,
+          'ordering_key' => configuration.ordering_key,
+          'ordering_value' => ordering_value(payload)
+        }
+      end
+
+      def ordering_value(payload)
+        return nil unless configuration.preserve_order
+
+        EventSerializer.ordering_value(payload, configuration.ordering_key)
       end
     end
   end

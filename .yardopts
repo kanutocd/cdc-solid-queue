@@ -1,3 +1,4 @@
+--title "cdc-solid-queue API Documentation"
 --markup markdown
 --readme README.md
 lib/**/*.rb

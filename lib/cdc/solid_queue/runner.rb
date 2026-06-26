@@ -23,10 +23,18 @@ module CDC
       def start
         count = 0
         @stream.each do |event|
-          @enqueuer.enqueue(event)
+          result = @enqueuer.enqueue(event)
+          checkpoint(event, result)
           count += 1
         end
         count
+      end
+
+      private
+
+      def checkpoint(event, result)
+        store = @enqueuer.configuration.checkpoint
+        store&.advance(event, result)
       end
     end
   end

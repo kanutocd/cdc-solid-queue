@@ -20,7 +20,7 @@ module CDC
       # @param payload [Hash]
       # @return [Object] process return value
       def perform(payload)
-        process(EventSerializer.load(payload))
+        process(EventSerializer.load_event(payload))
       end
 
       # Process a normalized CDC event payload.
