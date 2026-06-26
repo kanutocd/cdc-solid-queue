@@ -1,5 +1,9 @@
-## [Unreleased]
+# Changelog
 
-## [0.1.0] - 2026-06-26
+## 0.1.0
 
-- Initial release
+- Initial implementation skeleton.
+- Configuration object.
+- Event serializer.
+- Enqueuer.
+- ProcessorJob mixin.
