@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.2.0 Unreleased
+## Unreleased
+
+## 0.2.0
 
 - Optional downstream processor delegation to `cdc-concurrent` and `cdc-parallel`.
 - Rails example now demonstrates `cdc-concurrent` downstream processing.
