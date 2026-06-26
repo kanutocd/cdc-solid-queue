@@ -25,6 +25,13 @@ class ProcessorJobTest < Minitest::Test
     include CDC::SolidQueue::ProcessorJob
   end
 
+  DownstreamProcessor = Struct.new(:events) do
+    def process(event)
+      events << event
+      :downstream
+    end
+  end
+
   def test_included_sets_default_queue_when_available
     assert_equal :cdc, QueueAwareJob.queue
   end
@@ -48,5 +55,18 @@ class ProcessorJobTest < Minitest::Test
   def test_process_must_be_implemented
     error = assert_raises(NotImplementedError) { PlainJob.new.perform(id: 1) }
     assert_match(/must implement/, error.message)
+  end
+
+  def test_perform_delegates_to_configured_downstream_processor
+    events = []
+    CDC::SolidQueue.configure do |config|
+      config.downstream_processor = DownstreamProcessor.new(events)
+      config.downstream_runtime = :direct
+    end
+
+    assert_equal :downstream, PlainJob.new.perform(id: 1)
+    assert_equal [{ 'id' => 1 }], events
+  ensure
+    CDC::SolidQueue.reset_configuration!
   end
 end

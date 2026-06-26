@@ -54,6 +54,44 @@ class supports it. When `preserve_order` is enabled, the enqueued payload also
 includes cdc-solid-queue metadata with the configured ordering key and computed
 ordering value.
 
+## Downstream Processing
+
+Processor jobs can delegate work to CDC downstream runtime primitives. The
+default downstream runtime is `:concurrent`, backed by `cdc-concurrent`, which
+fits Solid Queue jobs that spend most of their time on I/O. CPU-heavy work can
+opt into `:parallel`, backed by `cdc-parallel`, in Ruby 4 applications.
+
+```ruby
+class WebhookProcessor < CDC::Core::Processor
+  concurrent_safe!
+
+  def process(event)
+    # perform I/O-bound work
+    CDC::Core::ProcessorResult.success(event)
+  end
+end
+
+CDC::SolidQueue.configure do |config|
+  config.processor_job = UserChangedJob
+  config.downstream_processor = WebhookProcessor.new
+  config.downstream_runtime = :concurrent
+  config.downstream_options = { concurrency: 100, timeout: 5.0 }
+end
+```
+
+Use `:parallel` only when the processor is Ractor-safe and the application runs
+on Ruby 4:
+
+```ruby
+config.downstream_runtime = :parallel
+config.downstream_options = { size: 4, timeout: 5 }
+```
+
+Both runtime gems are optional. Add `cdc-concurrent` or `cdc-parallel` to the
+application Gemfile when selecting that runtime. Without a configured
+`downstream_processor`, `CDC::SolidQueue::ProcessorJob` falls back to the job's
+own `#process(event)` method.
+
 ## Rails Task
 
 Rails applications can load the Railtie integration:

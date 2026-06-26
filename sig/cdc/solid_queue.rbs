@@ -32,6 +32,22 @@ module Pgoutput
 end
 
 module CDC
+  module Concurrent
+    class Runtime
+      def initialize: (processor: untyped, **untyped options) -> void
+      def process: (untyped item) -> untyped
+      def shutdown: () -> untyped
+    end
+  end
+
+  module Parallel
+    class Runtime
+      def initialize: (processor: untyped, **untyped options) -> void
+      def process: (untyped item) -> untyped
+      def shutdown: () -> untyped
+    end
+  end
+
   module SolidQueue
     VERSION: String
 
@@ -54,6 +70,7 @@ module CDC
     class Configuration
       SUPPORTED_SOURCE: Symbol
       ORDERING_KEYS: Array[Symbol]
+      DOWNSTREAM_RUNTIMES: Array[Symbol]
 
       attr_accessor processor_job: untyped
       attr_accessor queue: String
@@ -61,6 +78,9 @@ module CDC
       attr_accessor ordering_key: Symbol
       attr_accessor postgresql: Hash[Symbol, untyped]
       attr_accessor checkpoint: untyped
+      attr_accessor downstream_processor: untyped
+      attr_accessor downstream_runtime: Symbol
+      attr_accessor downstream_options: Hash[Symbol, untyped]
 
       def initialize: () -> void
       def validate!: () -> true
@@ -73,6 +93,7 @@ module CDC
       def validate_ordering_key!: () -> nil
       def validate_postgresql!: () -> nil
       def validate_checkpoint!: () -> nil
+      def validate_downstream!: () -> nil
     end
 
     class EventSerializer
@@ -114,6 +135,20 @@ module CDC
       def async_job: (untyped job) -> untyped
       def enqueue_metadata: (Hash[untyped, untyped] payload) -> Hash[String, untyped]
       def ordering_value: (Hash[untyped, untyped] payload) -> untyped
+    end
+
+    class DownstreamProcessor
+      attr_reader configuration: Configuration
+      def initialize: (Configuration configuration) -> void
+      def process: (untyped item) -> untyped
+
+      private
+
+      def processor: () -> untyped
+      def process_with_runtime: (untyped runtime, untyped item) -> untyped
+      def concurrent_runtime: () -> untyped
+      def parallel_runtime: () -> untyped
+      def require_runtime: (String feature, String gem_name) -> untyped
     end
 
     module ProcessorJob

@@ -84,6 +84,30 @@ class ConfigurationTest < Minitest::Test
     assert_match(/checkpoint/, error.message)
   end
 
+  def test_defaults_downstream_runtime_to_concurrent
+    config = CDC::SolidQueue::Configuration.new
+
+    assert_equal :concurrent, config.downstream_runtime
+    assert_nil config.downstream_processor
+    assert_equal({}, config.downstream_options)
+  end
+
+  def test_rejects_unknown_downstream_runtime
+    config = valid_config(JobWithLater)
+    config.downstream_runtime = :unknown
+
+    error = assert_raises(CDC::SolidQueue::ConfigurationError) { config.validate! }
+    assert_match(/downstream_runtime/, error.message)
+  end
+
+  def test_rejects_invalid_downstream_processor
+    config = valid_config(JobWithLater)
+    config.downstream_processor = Object.new
+
+    error = assert_raises(CDC::SolidQueue::ConfigurationError) { config.validate! }
+    assert_match(/downstream_processor/, error.message)
+  end
+
   private
 
   def valid_config(job)

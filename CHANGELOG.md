@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 Unreleased
+
+- Optional downstream processor delegation to `cdc-concurrent` and `cdc-parallel`.
 
 ## 0.1.2
 

@@ -12,8 +12,11 @@ module CDC
       SUPPORTED_SOURCE = :postgresql
       # Supported ordering scopes for serialized CDC events.
       ORDERING_KEYS = %i[identity primary_key relation transaction global none].freeze
+      # Supported downstream execution runtimes for processor jobs.
+      DOWNSTREAM_RUNTIMES = %i[concurrent parallel direct].freeze
 
-      attr_accessor :processor_job, :queue, :preserve_order, :ordering_key, :postgresql, :checkpoint
+      attr_accessor :processor_job, :queue, :preserve_order, :ordering_key, :postgresql, :checkpoint,
+                    :downstream_processor, :downstream_runtime, :downstream_options
 
       # Build a configuration with safe defaults.
       def initialize
@@ -23,6 +26,9 @@ module CDC
         @ordering_key = :identity
         @postgresql = {}
         @checkpoint = Checkpoint.new
+        @downstream_processor = nil
+        @downstream_runtime = :concurrent
+        @downstream_options = {}
       end
 
       # Validate this configuration.
@@ -37,6 +43,7 @@ module CDC
         validate_ordering_key!
         validate_postgresql!
         validate_checkpoint!
+        validate_downstream!
         true
       end
       # rubocop:enable Naming/PredicateMethod
@@ -80,6 +87,16 @@ module CDC
         return if @checkpoint.nil? || @checkpoint.respond_to?(:advance)
 
         raise ConfigurationError, 'checkpoint must respond to advance'
+      end
+
+      def validate_downstream!
+        unless DOWNSTREAM_RUNTIMES.include?(@downstream_runtime)
+          raise ConfigurationError, "downstream_runtime must be one of: #{DOWNSTREAM_RUNTIMES.join(', ')}"
+        end
+
+        return if @downstream_processor.nil? || @downstream_processor.respond_to?(:process)
+
+        raise ConfigurationError, 'downstream_processor must respond to process'
       end
     end
   end

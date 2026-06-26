@@ -20,7 +20,12 @@ module CDC
       # @param payload [Hash]
       # @return [Object] process return value
       def perform(payload)
-        process(EventSerializer.load_event(payload))
+        event = EventSerializer.load_event(payload)
+        if SolidQueue.configuration.downstream_processor
+          return DownstreamProcessor.new(SolidQueue.configuration).process(event)
+        end
+
+        process(event)
       end
 
       # Process a normalized CDC event payload.
