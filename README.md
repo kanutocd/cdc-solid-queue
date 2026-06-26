@@ -153,6 +153,28 @@ In that run, `cdc-solid-queue` translated and dispatched about 63.6k synthetic
 events per second, so real throughput will usually be dominated by Solid Queue
 persistence, database latency, job execution cost, and CDC source throughput.
 
+Example `downstream_direct` results on the same machine:
+
+```text
+mode=downstream_direct events=100000000 elapsed=16.2669s rate=6147457.32 events/s
+mode=downstream_direct events=1000000000 elapsed=157.8708s rate=6334292.58 events/s
+```
+
+These runs measure the lowest-overhead downstream delegation path:
+
+```text
+CDC::SolidQueue::DownstreamProcessor
+  -> :direct runtime branch
+  -> BenchmarkProcessor#process(event)
+```
+
+They do not measure Solid Queue enqueueing, Active Job serialization,
+PostgreSQL CDC, pgoutput parsing or decoding, `cdc-concurrent`,
+`cdc-parallel`, real application processor work, network I/O, or database I/O.
+The result means the direct downstream adapter can dispatch about 6.1M to 6.3M
+prebuilt synthetic events per second on that machine, making the adapter layer
+negligible compared with real persistence, CDC source, and processor costs.
+
 ## MVP Checkpoint Rule
 
 A checkpoint advances after the Solid Queue job is durably inserted. Job execution success is handled by Solid Queue retry semantics.
