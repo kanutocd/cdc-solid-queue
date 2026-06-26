@@ -1,0 +1,43 @@
+# frozen_string_literal: true
+
+require_relative '../../test_helper'
+
+class ProcessorJobTest < Minitest::Test
+  QueueAwareJob = Class.new do
+    @queue = nil
+    class << self
+      attr_reader :queue
+
+      def queue_as(name) = @queue = name
+    end
+
+    include CDC::SolidQueue::ProcessorJob
+
+    attr_reader :processed
+
+    def process(event)
+      @processed = event
+      :processed
+    end
+  end
+
+  PlainJob = Class.new do
+    include CDC::SolidQueue::ProcessorJob
+  end
+
+  def test_included_sets_default_queue_when_available
+    assert_equal :cdc, QueueAwareJob.queue
+  end
+
+  def test_perform_loads_payload_and_delegates_to_process
+    job = QueueAwareJob.new
+
+    assert_equal :processed, job.perform(id: 1)
+    assert_equal({ 'id' => 1 }, job.processed)
+  end
+
+  def test_process_must_be_implemented
+    error = assert_raises(NotImplementedError) { PlainJob.new.perform(id: 1) }
+    assert_match(/must implement/, error.message)
+  end
+end

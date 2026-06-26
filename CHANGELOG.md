@@ -7,3 +7,4 @@
 - Event serializer.
 - Enqueuer.
 - ProcessorJob mixin.
+- Test coverage gate.
