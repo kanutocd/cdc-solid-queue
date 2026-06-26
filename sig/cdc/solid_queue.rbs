@@ -1,0 +1,59 @@
+module CDC
+  module SolidQueue
+    VERSION: String
+
+    def self.configuration: () -> Configuration
+    def self.configure: () { (Configuration) -> untyped } -> Configuration
+    def self.reset_configuration!: () -> Configuration
+
+    class Error < StandardError
+    end
+
+    class ConfigurationError < Error
+    end
+
+    class UnsupportedSourceError < ConfigurationError
+    end
+
+    class SerializationError < Error
+    end
+
+    class Configuration
+      SUPPORTED_SOURCE: Symbol
+      ORDERING_KEYS: Array[Symbol]
+
+      attr_accessor processor_job: untyped
+      attr_accessor queue: String
+      attr_accessor preserve_order: bool
+      attr_accessor ordering_key: Symbol
+      attr_accessor postgresql: Hash[Symbol, untyped]
+
+      def initialize: () -> void
+      def validate!: () -> true
+      def source: () -> Symbol
+    end
+
+    class EventSerializer
+      def self.dump: (untyped event) -> Hash[String, untyped]
+      def self.load: (Hash[untyped, untyped] payload) -> Hash[String, untyped]
+      def self.ordering_value: (Hash[untyped, untyped] payload, Symbol key) -> untyped
+    end
+
+    class Enqueuer
+      attr_reader configuration: Configuration
+      def initialize: (Configuration configuration) -> void
+      def enqueue: (untyped event) -> untyped
+    end
+
+    module ProcessorJob
+      def self.included: (Class base) -> void
+      def perform: (Hash[untyped, untyped] payload) -> untyped
+      def process: (Hash[String, untyped] event) -> untyped
+    end
+
+    class Runner
+      def initialize: (stream: untyped, enqueuer: Enqueuer) -> void
+      def start: () -> Integer
+    end
+  end
+end

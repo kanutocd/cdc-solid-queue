@@ -8,3 +8,4 @@
 - Enqueuer.
 - ProcessorJob mixin.
 - Test coverage gate.
+- RBS signatures.

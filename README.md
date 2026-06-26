@@ -1,43 +1,62 @@
-# Cdc::Solid::Queue
+# cdc-solid-queue
 
-TODO: Delete this and the text below, and describe your gem
+Rails-native durable CDC job backend for Solid Queue.
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/cdc/solid/queue`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-## Installation
-
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
-
-Install the gem and add to the application's Gemfile by executing:
-
-```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+```text
+PostgreSQL WAL
+  -> pgoutput-client
+  -> pgoutput-parser / pgoutput-decoder
+  -> pgoutput-source-adapter
+  -> CDC::Core::ChangeEvent
+  -> cdc-solid-queue
+  -> Solid Queue
+  -> ApplicationJob
 ```
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+## Requirements
 
-```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
-```
+- Ruby 3.4+
+- Rails 7.1+
+- Solid Queue 1.0+
+- PostgreSQL logical replication
+
+Only PostgreSQL is supported in the initial implementation.
 
 ## Usage
 
-TODO: Write usage instructions here
+```ruby
+class UserChangedJob < ApplicationJob
+  include CDC::SolidQueue::ProcessorJob
 
-## Development
+  def process(event)
+    # event is a serialized CDC event Hash
+  end
+end
+```
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+```ruby
+CDC::SolidQueue.configure do |config|
+  config.processor_job = UserChangedJob
+  config.queue = "cdc"
+  config.preserve_order = true
+  config.ordering_key = :identity
+  config.postgresql = {
+    slot: "cdc_solid_queue",
+    publication: "cdc_publication"
+  }
+end
+```
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+## MVP Checkpoint Rule
 
-## Contributing
+A checkpoint may advance after the Solid Queue job is durably inserted. Job execution success is handled by Solid Queue retry semantics.
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/cdc-solid-queue. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/[USERNAME]/cdc-solid-queue/blob/main/CODE_OF_CONDUCT.md).
+## Quality Gates
 
-## License
+The first implementation is designed around:
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-
-## Code of Conduct
-
-Everyone interacting in the Cdc::Solid::Queue project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/cdc-solid-queue/blob/main/CODE_OF_CONDUCT.md).
+- 100% line coverage
+- 100% branch coverage
+- RBS validation
+- RuboCop configuration
+- YARD documentation
