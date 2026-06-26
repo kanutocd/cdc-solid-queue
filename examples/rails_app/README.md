@@ -43,8 +43,9 @@ bin/rails cdc_solid_queue:start
 The task streams pgoutput payloads, normalizes them to `CDC::Core::ChangeEvent`,
 enqueues the configured job through Solid Queue, executes `WebhookProcessor`
 through `cdc-concurrent`, and advances the checkpoint after enqueue succeeds.
-With `CDC_BATCH_SIZE` set above `1`, the example batches multiple events into
-one Solid Queue job and hands the batch to downstream `process_many`.
+`WebhookProcessor` implements both `process(event)` and `process_many(events)`,
+so when `CDC_BATCH_SIZE` is set above `1`, the example batches multiple events
+into one Solid Queue job and hands the batch to downstream `process_many`.
 
 Generate a change event from another terminal:
 

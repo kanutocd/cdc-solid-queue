@@ -91,7 +91,8 @@ config.downstream_options = { size: 4, timeout: 5 }
 Both runtime gems are optional. Add `cdc-concurrent` or `cdc-parallel` to the
 application Gemfile when selecting that runtime. Without a configured
 `downstream_processor`, `CDC::SolidQueue::ProcessorJob` falls back to the job's
-own `#process(event)` method.
+own `#process(event)` method, or `#process_many(events)` when a batched payload
+reaches a job that defines it.
 
 ## Rails Task
 

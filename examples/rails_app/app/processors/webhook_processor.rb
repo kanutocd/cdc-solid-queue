@@ -13,4 +13,8 @@ class WebhookProcessor < CDC::Core::Processor
     )
     CDC::Core::ProcessorResult.success(event)
   end
+
+  def process_many(events)
+    events.map { |event| process(event) }
+  end
 end
