@@ -53,7 +53,7 @@ module CDC
           slot_name: settings.fetch(:slot) { settings.fetch(:slot_name) },
           publication_names: settings.fetch(:publication) { settings.fetch(:publication_names) },
           start_lsn: settings[:start_lsn],
-          auto_create_slot: settings.fetch(:auto_create_slot, false),
+          auto_create_slot: @configuration.auto_create_slot || settings.fetch(:auto_create_slot, false),
           temporary_slot: settings.fetch(:temporary_slot, false),
           binary: settings.fetch(:binary, false),
           messages: settings.fetch(:messages, false)

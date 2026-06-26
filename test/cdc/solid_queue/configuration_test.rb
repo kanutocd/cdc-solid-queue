@@ -2,6 +2,7 @@
 
 require_relative '../../test_helper'
 
+# rubocop:disable Metrics/ClassLength
 class ConfigurationTest < Minitest::Test
   JobWithLater = Class.new do
     def self.perform_later(_payload) = :later
@@ -19,6 +20,12 @@ class ConfigurationTest < Minitest::Test
     assert_equal :identity, config.ordering_key
     assert_equal :postgresql, config.source
     assert_equal 1, config.batch_size
+  end
+
+  def test_defaults_auto_create_slot_to_false
+    config = CDC::SolidQueue::Configuration.new
+
+    refute config.auto_create_slot
   end
 
   def test_valid_with_perform_later
@@ -93,6 +100,14 @@ class ConfigurationTest < Minitest::Test
     assert_match(/batch_size/, error.message)
   end
 
+  def test_rejects_invalid_auto_create_slot
+    config = valid_config(JobWithLater)
+    config.auto_create_slot = 'true'
+
+    error = assert_raises(CDC::SolidQueue::ConfigurationError) { config.validate! }
+    assert_match(/auto_create_slot/, error.message)
+  end
+
   def test_defaults_downstream_runtime_to_concurrent
     config = CDC::SolidQueue::Configuration.new
 
@@ -126,3 +141,4 @@ class ConfigurationTest < Minitest::Test
     end
   end
 end
+# rubocop:enable Metrics/ClassLength

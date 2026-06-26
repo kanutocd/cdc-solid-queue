@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added top-level `config.auto_create_slot` and pass it through to
+  `Pgoutput::Client::Runner`.
+- Updated Rails configuration examples to run inside
+  `Rails.application.config.to_prepare`.
+
 ## 0.3.0
 
 - Batch-sized enqueueing now feeds arrays into downstream `process_many`, so

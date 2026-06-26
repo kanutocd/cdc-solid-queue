@@ -16,7 +16,7 @@ module CDC
       DOWNSTREAM_RUNTIMES = %i[concurrent parallel direct].freeze
 
       attr_accessor :processor_job, :queue, :preserve_order, :ordering_key, :postgresql, :checkpoint,
-                    :downstream_processor, :downstream_runtime, :downstream_options, :batch_size
+                    :downstream_processor, :downstream_runtime, :downstream_options, :batch_size, :auto_create_slot
 
       # Build a configuration with safe defaults.
       def initialize
@@ -30,6 +30,7 @@ module CDC
         @downstream_runtime = :concurrent
         @downstream_options = {}
         @batch_size = 1
+        @auto_create_slot = false
       end
 
       # Validate this configuration.
@@ -46,6 +47,7 @@ module CDC
         validate_checkpoint!
         validate_downstream!
         validate_batch_size!
+        validate_auto_create_slot!
         true
       end
       # rubocop:enable Naming/PredicateMethod
@@ -105,6 +107,12 @@ module CDC
         return if @batch_size.is_a?(Integer) && @batch_size.positive?
 
         raise ConfigurationError, 'batch_size must be a positive Integer'
+      end
+
+      def validate_auto_create_slot!
+        return if @auto_create_slot == true || @auto_create_slot == false
+
+        raise ConfigurationError, 'auto_create_slot must be true or false'
       end
     end
   end

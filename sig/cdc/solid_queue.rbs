@@ -82,6 +82,7 @@ module CDC
       attr_accessor downstream_runtime: Symbol
       attr_accessor downstream_options: Hash[Symbol, untyped]
       attr_accessor batch_size: Integer
+      attr_accessor auto_create_slot: bool
 
       def initialize: () -> void
       def validate!: () -> true
@@ -96,6 +97,7 @@ module CDC
       def validate_checkpoint!: () -> nil
       def validate_downstream!: () -> nil
       def validate_batch_size!: () -> nil
+      def validate_auto_create_slot!: () -> nil
     end
 
     class EventSerializer

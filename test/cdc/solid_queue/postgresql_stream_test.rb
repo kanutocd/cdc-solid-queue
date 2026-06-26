@@ -2,6 +2,7 @@
 
 require_relative '../../test_helper'
 
+# rubocop:disable Metrics/ClassLength
 class PostgresqlStreamTest < Minitest::Test
   Metadata = Data.define(:wal_end_lsn, :server_time)
 
@@ -47,17 +48,19 @@ class PostgresqlStreamTest < Minitest::Test
   def test_builds_default_pgoutput_client_runner_from_configuration
     config = CDC::SolidQueue::Configuration.new
     config.processor_job = Class.new { def self.perform_later(_payload) = :later }
+    config.auto_create_slot = true
     config.postgresql = {
       database_url: 'postgres://localhost/app',
       slot: 'slot',
       publication: 'publication',
-      start_lsn: '0/0',
-      auto_create_slot: true
+      start_lsn: '0/0'
     }
 
     stream = CDC::SolidQueue::PostgresqlStream.new(config)
+    runner = stream.instance_variable_get(:@client_runner)
 
-    assert_instance_of Pgoutput::Client::Runner, stream.instance_variable_get(:@client_runner)
+    assert_instance_of Pgoutput::Client::Runner, runner
+    assert runner.configuration.auto_create_slot
   end
 
   def test_builds_default_pgoutput_client_runner_from_alias_configuration
@@ -74,6 +77,22 @@ class PostgresqlStreamTest < Minitest::Test
 
     assert_equal 'slot', runner.configuration.slot_name
     assert_equal ['publication'], runner.configuration.publication_names
+  end
+
+  def test_builds_default_pgoutput_client_runner_with_legacy_auto_create_slot_configuration
+    config = CDC::SolidQueue::Configuration.new
+    config.processor_job = Class.new { def self.perform_later(_payload) = :later }
+    config.postgresql = {
+      database_url: 'postgres://localhost/app',
+      slot_name: 'slot',
+      publication_names: ['publication'],
+      auto_create_slot: true
+    }
+
+    stream = CDC::SolidQueue::PostgresqlStream.new(config)
+    runner = stream.instance_variable_get(:@client_runner)
+
+    assert runner.configuration.auto_create_slot
   end
 
   def test_metadata_builder_returns_transport_metadata
@@ -118,3 +137,4 @@ class PostgresqlStreamTest < Minitest::Test
     CDC::Core::ChangeEvent.new(operation: :insert, schema: 'public', table: 'users', new_values: { 'id' => 1 })
   end
 end
+# rubocop:enable Metrics/ClassLength

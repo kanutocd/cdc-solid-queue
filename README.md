@@ -35,17 +35,20 @@ end
 ```
 
 ```ruby
-CDC::SolidQueue.configure do |config|
-  config.processor_job = UserChangedJob
-  config.queue = "cdc"
-  config.preserve_order = true
-  config.ordering_key = :identity
-  config.checkpoint = CDC::SolidQueue::Checkpoint.new
-  config.postgresql = {
-    database_url: ENV.fetch("DATABASE_URL"),
-    slot: "cdc_solid_queue",
-    publication: "cdc_publication"
-  }
+Rails.application.config.to_prepare do
+  CDC::SolidQueue.configure do |config|
+    config.processor_job = UserChangedJob
+    config.queue = "cdc"
+    config.preserve_order = true
+    config.ordering_key = :identity
+    config.checkpoint = CDC::SolidQueue::Checkpoint.new
+    config.auto_create_slot = false
+    config.postgresql = {
+      database_url: ENV.fetch("DATABASE_URL"),
+      slot: "cdc_solid_queue",
+      publication: "cdc_publication"
+    }
+  end
 end
 ```
 
@@ -54,6 +57,8 @@ class supports it. When `preserve_order` is enabled, the enqueued payload also
 includes cdc-solid-queue metadata with the configured ordering key and computed
 ordering value. Set `config.batch_size` above `1` to enqueue multiple CDC
 events in one Solid Queue job and hand the batch to downstream `process_many`.
+Set `config.auto_create_slot = true` to ask `pgoutput-client` to create the
+replication slot when the ingestion runner starts.
 
 ## Downstream Processing
 
@@ -72,11 +77,13 @@ class WebhookProcessor < CDC::Core::Processor
   end
 end
 
-CDC::SolidQueue.configure do |config|
-  config.processor_job = UserChangedJob
-  config.downstream_processor = WebhookProcessor.new
-  config.downstream_runtime = :concurrent
-  config.downstream_options = { concurrency: 100, timeout: 5.0 }
+Rails.application.config.to_prepare do
+  CDC::SolidQueue.configure do |config|
+    config.processor_job = UserChangedJob
+    config.downstream_processor = WebhookProcessor.new
+    config.downstream_runtime = :concurrent
+    config.downstream_options = { concurrency: 100, timeout: 5.0 }
+  end
 end
 ```
 
