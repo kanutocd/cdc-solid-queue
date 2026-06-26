@@ -90,6 +90,22 @@ class EnqueuerTest < Minitest::Test
     assert_nil CDC::SolidQueue::EventSerializer.enqueue_metadata(SettableJob.payloads.last)['ordering_value']
   end
 
+  # rubocop:disable Metrics/AbcSize
+  def test_enqueue_batches_payloads_with_batch_metadata
+    config = config_for(SettableJob)
+    config.batch_size = 2
+    enqueuer = CDC::SolidQueue::Enqueuer.new(config)
+
+    assert_equal :later, enqueuer.enqueue([{ identity: 1 }, { identity: 2 }])
+    metadata = CDC::SolidQueue::EventSerializer.enqueue_metadata(SettableJob.payloads.last)
+
+    assert_equal 2, metadata.length
+    assert_equal 2, metadata.fetch(0).fetch('batch_size')
+    assert_equal 0, metadata.fetch(0).fetch('batch_index')
+    assert_equal 1, metadata.fetch(1).fetch('batch_index')
+  end
+  # rubocop:enable Metrics/AbcSize
+
   def test_initialize_validates_configuration
     config = config_for(LaterJob)
     config.processor_job = nil
@@ -110,7 +126,8 @@ class EnqueuerTest < Minitest::Test
       'queue' => queue,
       'preserve_order' => true,
       'ordering_key' => :identity,
-      'ordering_value' => ordering_value
+      'ordering_value' => ordering_value,
+      'batch_size' => 1
     }
   end
 end

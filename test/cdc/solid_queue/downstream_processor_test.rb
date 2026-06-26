@@ -2,6 +2,7 @@
 
 require_relative '../../test_helper'
 
+# rubocop:disable Metrics/ClassLength
 class DownstreamProcessorTest < Minitest::Test
   Processor = Struct.new(:events) do
     def process(event)
@@ -10,10 +11,31 @@ class DownstreamProcessorTest < Minitest::Test
     end
   end
 
+  ManyProcessor = Struct.new(:events) do
+    def process(event)
+      events << event
+      :processed
+    end
+
+    def process_many(batch)
+      events << batch
+      :processed_many
+    end
+  end
+
   Runtime = Struct.new(:processor, :options, :items, :shutdowns) do
     def process(item)
       items << item
       processor.process(item)
+    end
+
+    def process_many(batch)
+      items << batch
+      if processor.respond_to?(:process_many)
+        processor.process_many(batch)
+      else
+        batch.map { |item| processor.process(item) }
+      end
     end
 
     def shutdown
@@ -37,13 +59,34 @@ class DownstreamProcessorTest < Minitest::Test
     assert_equal [:event], events
   end
 
+  def test_direct_runtime_processes_many_with_processor
+    events = []
+    config = config_for(Processor.new(events), runtime: :direct)
+
+    assert_equal %i[processed processed], CDC::SolidQueue::DownstreamProcessor.new(config).process_many(%i[a b])
+    assert_equal %i[a b], events
+  end
+
   def test_concurrent_runtime_processes_and_shutdowns
     factory = RuntimeFactory.new([], [], [])
     with_runtime(:Concurrent, factory) do
       config = config_for(Processor.new([]), options: { concurrency: 10, timeout: 1.0 })
 
       assert_equal :processed, CDC::SolidQueue::DownstreamProcessor.new(config).process(:event)
-      assert_equal [:event], factory.items
+      assert_equal [[:event]], factory.items
+      assert_equal [true], factory.shutdowns
+      assert_equal({ concurrency: 10, timeout: 1.0 }, factory.created.fetch(0).options)
+    end
+  end
+
+  def test_concurrent_runtime_processes_many_and_shutdowns
+    factory = RuntimeFactory.new([], [], [])
+    with_runtime(:Concurrent, factory) do
+      config = config_for(Processor.new([]), options: { concurrency: 10, timeout: 1.0 })
+
+      assert_equal %i[processed processed],
+                   CDC::SolidQueue::DownstreamProcessor.new(config).process_many(%i[a b])
+      assert_equal [%i[a b]], factory.items
       assert_equal [true], factory.shutdowns
       assert_equal({ concurrency: 10, timeout: 1.0 }, factory.created.fetch(0).options)
     end
@@ -55,7 +98,20 @@ class DownstreamProcessorTest < Minitest::Test
       config = config_for(Processor.new([]), runtime: :parallel, options: { size: 2 })
 
       assert_equal :processed, CDC::SolidQueue::DownstreamProcessor.new(config).process(:event)
-      assert_equal [:event], factory.items
+      assert_equal [[:event]], factory.items
+      assert_equal [true], factory.shutdowns
+      assert_equal({ size: 2 }, factory.created.fetch(0).options)
+    end
+  end
+
+  def test_parallel_runtime_processes_many_and_shutdowns
+    factory = RuntimeFactory.new([], [], [])
+    with_runtime(:Parallel, factory) do
+      config = config_for(Processor.new([]), runtime: :parallel, options: { size: 2 })
+
+      assert_equal %i[processed processed],
+                   CDC::SolidQueue::DownstreamProcessor.new(config).process_many(%i[a b])
+      assert_equal [%i[a b]], factory.items
       assert_equal [true], factory.shutdowns
       assert_equal({ size: 2 }, factory.created.fetch(0).options)
     end
@@ -89,6 +145,16 @@ class DownstreamProcessorTest < Minitest::Test
     assert_match(/unsupported downstream_runtime/, error.message)
   end
 
+  def test_process_many_unknown_runtime_raises_configuration_error
+    config = config_for(Processor.new([]), runtime: :direct)
+    config.downstream_runtime = :unknown
+
+    error = assert_raises(CDC::SolidQueue::ConfigurationError) do
+      CDC::SolidQueue::DownstreamProcessor.new(config).process_many(%i[a b])
+    end
+    assert_match(/unsupported downstream_runtime/, error.message)
+  end
+
   def test_missing_downstream_processor_raises_configuration_error
     config = config_for(nil, runtime: :direct)
 
@@ -96,6 +162,16 @@ class DownstreamProcessorTest < Minitest::Test
       CDC::SolidQueue::DownstreamProcessor.new(config).process(:event)
     end
     assert_match(/downstream_processor/, error.message)
+  end
+
+  def test_concurrent_runtime_uses_processor_process_many_result
+    factory = RuntimeFactory.new([], [], [])
+    with_runtime(:Concurrent, factory) do
+      config = config_for(ManyProcessor.new([]), options: { concurrency: 10 })
+
+      assert_equal :processed_many, CDC::SolidQueue::DownstreamProcessor.new(config).process(:event)
+      assert_equal [[:event]], factory.items
+    end
   end
 
   private
@@ -121,3 +197,4 @@ class DownstreamProcessorTest < Minitest::Test
     CDC.send(:remove_const, name) if CDC.const_defined?(name, false)
   end
 end
+# rubocop:enable Metrics/ClassLength

@@ -21,16 +21,30 @@ module CDC
       #
       # @return [Integer] number of enqueued events
       def start
+        # @type var batch: Array[untyped]
+        batch = []
         count = 0
+
         @stream.each do |event|
-          result = @enqueuer.enqueue(event)
-          checkpoint(event, result)
-          count += 1
+          batch << event
+          next unless batch.length >= @enqueuer.configuration.batch_size
+
+          count += flush_batch(batch)
+          batch = []
         end
-        count
+
+        count + flush_batch(batch)
       end
 
       private
+
+      def flush_batch(batch)
+        return 0 if batch.empty?
+
+        result = @enqueuer.enqueue(batch.length == 1 ? batch.first : batch.dup)
+        checkpoint(batch, result)
+        batch.length
+      end
 
       def checkpoint(event, result)
         store = @enqueuer.configuration.checkpoint

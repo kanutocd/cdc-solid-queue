@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Batch-sized enqueueing now feeds arrays into downstream `process_many`, so
+  the Solid Queue job path matches batch-style downstream runtimes.
+
 ## 0.2.0
 
 - Optional downstream processor delegation to `cdc-concurrent` and `cdc-parallel`.

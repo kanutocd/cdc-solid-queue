@@ -18,6 +18,7 @@ class ConfigurationTest < Minitest::Test
     assert config.preserve_order
     assert_equal :identity, config.ordering_key
     assert_equal :postgresql, config.source
+    assert_equal 1, config.batch_size
   end
 
   def test_valid_with_perform_later
@@ -82,6 +83,14 @@ class ConfigurationTest < Minitest::Test
 
     error = assert_raises(CDC::SolidQueue::ConfigurationError) { config.validate! }
     assert_match(/checkpoint/, error.message)
+  end
+
+  def test_rejects_invalid_batch_size
+    config = valid_config(JobWithLater)
+    config.batch_size = 0
+
+    error = assert_raises(CDC::SolidQueue::ConfigurationError) { config.validate! }
+    assert_match(/batch_size/, error.message)
   end
 
   def test_defaults_downstream_runtime_to_concurrent

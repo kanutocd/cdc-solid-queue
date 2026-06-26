@@ -21,10 +21,15 @@ BenchmarkProcessor = Class.new(CDC::Core::Processor) do
   def process(event)
     event
   end
+
+  def process_many(events)
+    events
+  end
 end
 
 events = Integer(ENV.fetch('CDC_SOLID_QUEUE_BENCH_EVENTS', '10000'))
 mode = ENV.fetch('CDC_SOLID_QUEUE_BENCH_MODE', 'enqueue')
+batch_size = Integer(ENV.fetch('CDC_SOLID_QUEUE_BENCH_BATCH_SIZE', '100'))
 
 config = CDC::SolidQueue::Configuration.new
 config.processor_job = BenchmarkJob
@@ -50,6 +55,12 @@ elapsed = Benchmark.realtime do
     processor = CDC::SolidQueue::DownstreamProcessor.new(config)
     change_event = CDC::SolidQueue::EventSerializer.load_event(event)
     events.times { processor.process(change_event) }
+  when 'downstream_batch'
+    config.downstream_processor = BenchmarkProcessor.new
+    config.downstream_runtime = :direct
+    processor = CDC::SolidQueue::DownstreamProcessor.new(config)
+    batch = Array.new(batch_size) { event }
+    events.times { processor.process(CDC::SolidQueue::EventSerializer.load_event(batch)) }
   else
     raise ArgumentError, "unknown benchmark mode: #{mode}"
   end

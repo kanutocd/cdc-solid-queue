@@ -14,16 +14,26 @@ module CDC
 
       # Process one normalized CDC work item.
       #
-      # @param item [Object]
+      # @param item [Object, Array<Object>]
       # @return [Object]
       def process(item)
+        return process_many(item) if item.is_a?(Array)
+
+        process_one(item)
+      end
+
+      # Process many normalized CDC work items.
+      #
+      # @param items [Array<Object>]
+      # @return [Object]
+      def process_many(items)
         case configuration.downstream_runtime
         when :direct
-          processor.process(item)
+          process_many_direct(items)
         when :concurrent
-          process_with_runtime(concurrent_runtime, item)
+          process_with_runtime(concurrent_runtime, items)
         when :parallel
-          process_with_runtime(parallel_runtime, item)
+          process_with_runtime(parallel_runtime, items)
         else
           raise ConfigurationError, "unsupported downstream_runtime: #{configuration.downstream_runtime.inspect}"
         end
@@ -35,11 +45,36 @@ module CDC
         configuration.downstream_processor || raise(ConfigurationError, 'downstream_processor is required')
       end
 
-      def process_with_runtime(runtime, item)
-        runtime.process(item)
+      def process_one(item)
+        case configuration.downstream_runtime
+        when :direct
+          processor.process(item)
+        when :concurrent
+          unwrap_single_result(process_with_runtime(concurrent_runtime, [item]))
+        when :parallel
+          unwrap_single_result(process_with_runtime(parallel_runtime, [item]))
+        else
+          raise ConfigurationError, "unsupported downstream_runtime: #{configuration.downstream_runtime.inspect}"
+        end
+      end
+
+      def process_many_direct(items)
+        return processor.process_many(items) if processor.respond_to?(:process_many)
+
+        items.map { |item| processor.process(item) }
+      end
+      private :process_many_direct
+
+      def process_with_runtime(runtime, items)
+        runtime.process_many(items)
       ensure
         runtime.shutdown
       end
+
+      def unwrap_single_result(result)
+        result.is_a?(Array) && result.length == 1 ? result.first : result
+      end
+      private :unwrap_single_result
 
       def concurrent_runtime
         require_runtime('cdc/concurrent', 'cdc-concurrent') unless defined?(CDC::Concurrent::Runtime)

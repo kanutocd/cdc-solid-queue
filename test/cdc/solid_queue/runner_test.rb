@@ -8,6 +8,7 @@ class RunnerTest < Minitest::Test
       config = CDC::SolidQueue::Configuration.new
       config.processor_job = EnqueuerTest::LaterJob
       config.postgresql = { slot: 'cdc' }
+      config.batch_size = 1
       config
     end
 
@@ -40,6 +41,23 @@ class RunnerTest < Minitest::Test
     assert_equal [{ id: 1 }, { id: 2 }], events
   end
 
+  def test_start_batches_events_before_enqueueing
+    events = []
+    enqueuer = FakeEnqueuer.new(events)
+    enqueuer.define_singleton_method(:configuration) do
+      config = CDC::SolidQueue::Configuration.new
+      config.processor_job = EnqueuerTest::LaterJob
+      config.postgresql = { slot: 'cdc' }
+      config.batch_size = 2
+      config
+    end
+
+    runner = CDC::SolidQueue::Runner.new(stream: [{ id: 1 }, { id: 2 }, { id: 3 }], enqueuer: enqueuer)
+
+    assert_equal 3, runner.start
+    assert_equal [[{ id: 1 }, { id: 2 }], { id: 3 }], events
+  end
+
   def test_start_checkpoints_after_successful_enqueue
     checkpoint = CheckpointStore.new([])
     config = config_with_checkpoint(checkpoint)
@@ -50,7 +68,7 @@ class RunnerTest < Minitest::Test
     runner = CDC::SolidQueue::Runner.new(stream: [{ id: 1 }], enqueuer: enqueuer)
 
     assert_equal 1, runner.start
-    assert_equal [[{ id: 1 }, [:enqueued, { id: 1 }]]], checkpoint.advanced
+    assert_equal [[[{ id: 1 }], [:enqueued, { id: 1 }]]], checkpoint.advanced
   end
 
   def test_start_does_not_checkpoint_failed_enqueue

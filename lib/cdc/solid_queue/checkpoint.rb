@@ -27,6 +27,8 @@ module CDC
       private
 
       def position_for(event)
+        return event.map { |item| position_for(item) }.compact.last if event.is_a?(Array)
+
         payload = EventSerializer.dump(event)
         payload['source_position'] || payload['commit_lsn'] || payload.dig('metadata', 'wal_end_lsn')
       rescue SerializationError

@@ -15,10 +15,10 @@ module CDC
 
       # Enqueue one CDC event.
       #
-      # @param event [Object, Hash]
+      # @param event [Object, Hash, Array<Object>]
       # @return [Object] Active Job return value
       def enqueue(event)
-        payload = EventSerializer.dump(event)
+        payload = payload_for(event)
         payload = EventSerializer.with_enqueue_metadata(payload, enqueue_metadata(payload))
         job = configuration.processor_job
         return async_job(job).perform_later(payload) if job.respond_to?(:perform_later)
@@ -39,14 +39,25 @@ module CDC
           'queue' => configuration.queue,
           'preserve_order' => configuration.preserve_order,
           'ordering_key' => configuration.ordering_key,
-          'ordering_value' => ordering_value(payload)
+          'ordering_value' => ordering_value(payload),
+          'batch_size' => configuration.batch_size
         }
       end
 
       def ordering_value(payload)
         return nil unless configuration.preserve_order
 
-        EventSerializer.ordering_value(payload, configuration.ordering_key)
+        if payload.is_a?(Array)
+          payload.map { |event| EventSerializer.ordering_value(event, configuration.ordering_key) }
+        else
+          EventSerializer.ordering_value(payload, configuration.ordering_key)
+        end
+      end
+
+      def payload_for(event)
+        return EventSerializer.dump_batch(event) if event.is_a?(Array)
+
+        EventSerializer.dump(event)
       end
     end
   end

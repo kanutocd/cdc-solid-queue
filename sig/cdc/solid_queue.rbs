@@ -81,6 +81,7 @@ module CDC
       attr_accessor downstream_processor: untyped
       attr_accessor downstream_runtime: Symbol
       attr_accessor downstream_options: Hash[Symbol, untyped]
+      attr_accessor batch_size: Integer
 
       def initialize: () -> void
       def validate!: () -> true
@@ -94,17 +95,21 @@ module CDC
       def validate_postgresql!: () -> nil
       def validate_checkpoint!: () -> nil
       def validate_downstream!: () -> nil
+      def validate_batch_size!: () -> nil
     end
 
     class EventSerializer
       INTERNAL_METADATA_KEY: String
+      ORDERING_VALUE_FETCHERS: Hash[Symbol, Proc]
 
       def self.dump: (untyped event) -> Hash[String, untyped]
+      def self.dump_batch: (::Array[untyped] events) -> ::Array[Hash[String, untyped]]
       def self.load: (Hash[untyped, untyped] payload) -> Hash[String, untyped]
-      def self.load_event: (Hash[untyped, untyped] payload) -> untyped
-      def self.with_enqueue_metadata: (Hash[untyped, untyped] payload, Hash[untyped, untyped] metadata) -> Hash[String, untyped]
-      def self.enqueue_metadata: (Hash[untyped, untyped] payload) -> Hash[String, untyped]
-      def self.ordering_value: (Hash[untyped, untyped] payload, Symbol key) -> untyped
+      def self.load_batch: (::Array[Hash[untyped, untyped]] payloads) -> ::Array[Hash[String, untyped]]
+      def self.load_event: (Hash[untyped, untyped] | ::Array[Hash[untyped, untyped]]) -> untyped
+      def self.with_enqueue_metadata: (Hash[untyped, untyped] | ::Array[Hash[untyped, untyped]], Hash[untyped, untyped]) -> untyped
+      def self.enqueue_metadata: (Hash[untyped, untyped] | ::Array[Hash[untyped, untyped]]) -> untyped
+      def self.ordering_value: (Hash[untyped, untyped] | ::Array[Hash[untyped, untyped]], Symbol) -> untyped
 
       private
 
@@ -112,6 +117,8 @@ module CDC
       def self.build_change_event: (Hash[String, untyped] normalized) -> untyped
       def self.strip_internal_metadata: (Hash[String, untyped] payload) -> Hash[String, untyped]
       def self.change_event_payload?: (Hash[String, untyped] payload) -> bool
+      def self.enqueue_metadata_for_batch: (::Array[Hash[String, untyped]] payloads) -> ::Array[Hash[String, untyped]]
+      def self.metadata_for_batch_item: (Hash[untyped, untyped] metadata, Integer index) -> Hash[String, untyped]
     end
 
     class Checkpoint
@@ -135,17 +142,22 @@ module CDC
       def async_job: (untyped job) -> untyped
       def enqueue_metadata: (Hash[untyped, untyped] payload) -> Hash[String, untyped]
       def ordering_value: (Hash[untyped, untyped] payload) -> untyped
+      def payload_for: (untyped event) -> untyped
     end
 
     class DownstreamProcessor
       attr_reader configuration: Configuration
       def initialize: (Configuration configuration) -> void
       def process: (untyped item) -> untyped
+      def process_many: (::Array[untyped] items) -> untyped
 
       private
 
       def processor: () -> untyped
-      def process_with_runtime: (untyped runtime, untyped item) -> untyped
+      def process_one: (untyped item) -> untyped
+      def process_many_direct: (::Array[untyped] items) -> untyped
+      def process_with_runtime: (untyped runtime, ::Array[untyped] items) -> untyped
+      def unwrap_single_result: (untyped result) -> untyped
       def concurrent_runtime: () -> untyped
       def parallel_runtime: () -> untyped
       def require_runtime: (String feature, String gem_name) -> untyped
@@ -154,7 +166,9 @@ module CDC
     module ProcessorJob
       def self.included: (untyped base) -> void
       def perform: (Hash[untyped, untyped] payload) -> untyped
+                 | (::Array[Hash[untyped, untyped]]) -> untyped
       def process: (Hash[String, untyped] event) -> untyped
+      def process_many: (::Array[untyped] events) -> untyped
     end
 
     class Runner
@@ -164,6 +178,7 @@ module CDC
       private
 
       def checkpoint: (untyped event, untyped result) -> untyped
+      def flush_batch: (::Array[untyped] batch) -> Integer
     end
 
     class PostgresqlStream

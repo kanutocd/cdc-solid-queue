@@ -52,7 +52,8 @@ end
 `config.queue` is applied through Active Job's `set(queue:)` API when the job
 class supports it. When `preserve_order` is enabled, the enqueued payload also
 includes cdc-solid-queue metadata with the configured ordering key and computed
-ordering value.
+ordering value. Set `config.batch_size` above `1` to enqueue multiple CDC
+events in one Solid Queue job and hand the batch to downstream `process_many`.
 
 ## Downstream Processing
 
@@ -136,6 +137,9 @@ bundle exec rake benchmark:enqueue
 Set `CDC_SOLID_QUEUE_BENCH_EVENTS` to control the event count.
 Set `CDC_SOLID_QUEUE_BENCH_MODE=downstream_direct` to measure direct downstream
 processor delegation overhead without Solid Queue enqueue translation.
+Set `CDC_SOLID_QUEUE_BENCH_MODE=downstream_batch` to measure batched downstream
+delegation overhead. Set `CDC_SOLID_QUEUE_BENCH_BATCH_SIZE` to control the batch
+width.
 
 Example local result on Ruby 3.4.9:
 
@@ -174,6 +178,17 @@ PostgreSQL CDC, pgoutput parsing or decoding, `cdc-concurrent`,
 The result means the direct downstream adapter can dispatch about 6.1M to 6.3M
 prebuilt synthetic events per second on that machine, making the adapter layer
 negligible compared with real persistence, CDC source, and processor costs.
+
+Batch mode example:
+
+```text
+mode=downstream_batch events=100000000 elapsed=... rate=... events/s
+```
+
+Batch mode measures one more layer: batch deserialization plus `process_many`
+dispatch through the downstream adapter. When a downstream runtime such as
+`cdc-concurrent` or `cdc-parallel` is configured, that batch is handed to the
+runtime pool in one call instead of event-by-event.
 
 ## MVP Checkpoint Rule
 

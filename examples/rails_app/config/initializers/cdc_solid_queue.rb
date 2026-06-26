@@ -6,6 +6,7 @@ CDC::SolidQueue.configure do |config|
   config.preserve_order = true
   config.ordering_key = :primary_key
   config.checkpoint = CDC::SolidQueue::Checkpoint.new
+  config.batch_size = Integer(ENV.fetch('CDC_BATCH_SIZE', '25'))
   config.downstream_processor = WebhookProcessor.new
   config.downstream_runtime = :concurrent
   config.downstream_options = {

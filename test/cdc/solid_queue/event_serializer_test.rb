@@ -24,9 +24,27 @@ class EventSerializerTest < Minitest::Test
     assert_match(/to_h/, error.message)
   end
 
+  def test_dump_batch_rejects_non_array
+    error = assert_raises(CDC::SolidQueue::SerializationError) { CDC::SolidQueue::EventSerializer.dump_batch(nil) }
+    assert_match(/Array/, error.message)
+  end
+
   def test_load_rejects_non_hash
     error = assert_raises(CDC::SolidQueue::SerializationError) { CDC::SolidQueue::EventSerializer.load([]) }
     assert_match(/Hash/, error.message)
+  end
+
+  def test_load_batch_rejects_non_array
+    error = assert_raises(CDC::SolidQueue::SerializationError) { CDC::SolidQueue::EventSerializer.load_batch(nil) }
+    assert_match(/Array/, error.message)
+  end
+
+  def test_load_event_rehydrates_batches
+    events = CDC::SolidQueue::EventSerializer.load_event(batch_payload)
+
+    assert_kind_of Array, events
+    assert_equal %w[public.users public.accounts], events.map(&:qualified_table_name)
+    assert all_change_events?(events)
   end
 
   def test_normalizes_unknown_leaf_to_string
@@ -38,6 +56,10 @@ class EventSerializerTest < Minitest::Test
 
   def test_ordering_value_identity
     assert_equal 42, CDC::SolidQueue::EventSerializer.ordering_value({ identity: 42 }, :identity)
+  end
+
+  def test_ordering_value_batch
+    assert_equal [1, 2], CDC::SolidQueue::EventSerializer.ordering_value([{ identity: 1 }, { identity: 2 }], :identity)
   end
 
   def test_ordering_value_primary_key_fallback
@@ -67,6 +89,40 @@ class EventSerializerTest < Minitest::Test
 
   def test_enqueue_metadata_returns_empty_hash_for_plain_payload
     assert_equal({}, CDC::SolidQueue::EventSerializer.enqueue_metadata(id: 1))
+  end
+
+  # rubocop:disable Metrics/MethodLength
+  def test_enqueue_metadata_returns_batch_metadata_for_batches
+    input_metadata = {
+      queue: 'cdc',
+      preserve_order: true,
+      ordering_key: :identity,
+      ordering_value: [1, 2],
+      batch_size: 2
+    }
+
+    metadata = CDC::SolidQueue::EventSerializer.enqueue_metadata(
+      CDC::SolidQueue::EventSerializer.with_enqueue_metadata(batch_payload, input_metadata)
+    )
+
+    assert_equal 2, metadata.length
+    assert_equal 2, metadata.fetch(0).fetch('batch_size')
+    assert_equal 0, metadata.fetch(0).fetch('batch_index')
+    assert_equal 1, metadata.fetch(1).fetch('batch_index')
+  end
+  # rubocop:enable Metrics/MethodLength
+
+  private
+
+  def batch_payload
+    [
+      { operation: :insert, schema: 'public', table: 'users' },
+      { operation: :update, schema: 'public', table: 'accounts' }
+    ]
+  end
+
+  def all_change_events?(events)
+    events.all?(CDC::Core::ChangeEvent)
   end
 end
 

@@ -17,7 +17,7 @@ module CDC
 
       # Active Job entrypoint.
       #
-      # @param payload [Hash]
+      # @param payload [Hash, Array<Hash>]
       # @return [Object] process return value
       def perform(payload)
         event = EventSerializer.load_event(payload)
@@ -25,12 +25,14 @@ module CDC
           return DownstreamProcessor.new(SolidQueue.configuration).process(event)
         end
 
+        return process_many(event) if event.is_a?(Array) && respond_to?(:process_many)
+
         process(event)
       end
 
       # Process a normalized CDC event payload.
       #
-      # @param event [Hash]
+      # @param event [Hash, Array<Hash>]
       # @raise [NotImplementedError] when the including job does not override it
       def process(event)
         raise NotImplementedError, "#{self.class} must implement #process"

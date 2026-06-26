@@ -16,7 +16,7 @@ module CDC
       DOWNSTREAM_RUNTIMES = %i[concurrent parallel direct].freeze
 
       attr_accessor :processor_job, :queue, :preserve_order, :ordering_key, :postgresql, :checkpoint,
-                    :downstream_processor, :downstream_runtime, :downstream_options
+                    :downstream_processor, :downstream_runtime, :downstream_options, :batch_size
 
       # Build a configuration with safe defaults.
       def initialize
@@ -29,6 +29,7 @@ module CDC
         @downstream_processor = nil
         @downstream_runtime = :concurrent
         @downstream_options = {}
+        @batch_size = 1
       end
 
       # Validate this configuration.
@@ -44,6 +45,7 @@ module CDC
         validate_postgresql!
         validate_checkpoint!
         validate_downstream!
+        validate_batch_size!
         true
       end
       # rubocop:enable Naming/PredicateMethod
@@ -97,6 +99,12 @@ module CDC
         return if @downstream_processor.nil? || @downstream_processor.respond_to?(:process)
 
         raise ConfigurationError, 'downstream_processor must respond to process'
+      end
+
+      def validate_batch_size!
+        return if @batch_size.is_a?(Integer) && @batch_size.positive?
+
+        raise ConfigurationError, 'batch_size must be a positive Integer'
       end
     end
   end
