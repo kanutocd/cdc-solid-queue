@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish GitHub release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          persist-credentials: false
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+
+      - name: Run quality gate
+        run: bundle exec rake
+
+      - name: Resolve release metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="$(ruby -Ilib -rcdc/solid_queue/version -e 'puts CDC::SolidQueue::VERSION')"
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+
+          expected_tag="v${version}"
+          if [[ "${tag}" != "${expected_tag}" ]]; then
+            echo "Release tag ${tag} does not match gem version ${version}; expected ${expected_tag}." >&2
+            exit 1
+          fi
+
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "gem=cdc-solid-queue-${version}.gem" >> "${GITHUB_OUTPUT}"
+
+      - name: Build gem
+        run: gem build cdc-solid-queue.gemspec
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.metadata.outputs.tag }}
+          GEM_FILE: ${{ steps.metadata.outputs.gem }}
+        run: |
+          gh release create "${RELEASE_TAG}" "${GEM_FILE}" \
+            --title "${RELEASE_TAG}" \
+            --notes-file CHANGELOG.md \
+            --verify-tag
