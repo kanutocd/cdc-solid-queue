@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0
+
 - Batch-sized enqueueing now feeds arrays into downstream `process_many`, so
   the Solid Queue job path matches batch-style downstream runtimes.
 
