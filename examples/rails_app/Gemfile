@@ -2,6 +2,7 @@
 
 source 'https://rubygems.org'
 
+gem 'cdc-concurrent', path: '../../../cdc-concurrent'
 gem 'cdc-solid-queue', path: '../..'
 gem 'rails', '~> 7.1'
 gem 'solid_queue', '~> 1.0'

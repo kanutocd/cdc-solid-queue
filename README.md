@@ -134,6 +134,8 @@ bundle exec rake benchmark:enqueue
 ```
 
 Set `CDC_SOLID_QUEUE_BENCH_EVENTS` to control the event count.
+Set `CDC_SOLID_QUEUE_BENCH_MODE=downstream_direct` to measure direct downstream
+processor delegation overhead without Solid Queue enqueue translation.
 
 Example local result on Ruby 3.4.9:
 

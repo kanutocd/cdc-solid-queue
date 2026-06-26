@@ -13,7 +13,8 @@ the gem repository does not need to vendor a full app skeleton.
 - `config/database.yml` points Rails at the local PostgreSQL container.
 - `config/initializers/cdc_solid_queue.rb` configures ingestion.
 - `app/jobs/application_job.rb` provides the Rails job base class.
-- `app/jobs/user_changed_job.rb` consumes `CDC::Core::ChangeEvent` objects.
+- `app/jobs/user_changed_job.rb` hands events to the configured downstream runtime.
+- `app/processors/webhook_processor.rb` is a `cdc-concurrent` processor.
 - `compose.yml` starts PostgreSQL with logical replication enabled.
 - `db/init/01_cdc_example.sql` creates the example table and publication.
 
@@ -40,8 +41,8 @@ bin/rails cdc_solid_queue:start
 ```
 
 The task streams pgoutput payloads, normalizes them to `CDC::Core::ChangeEvent`,
-enqueues the configured job through Solid Queue, and advances the checkpoint
-after enqueue succeeds.
+enqueues the configured job through Solid Queue, executes `WebhookProcessor`
+through `cdc-concurrent`, and advances the checkpoint after enqueue succeeds.
 
 Generate a change event from another terminal:
 

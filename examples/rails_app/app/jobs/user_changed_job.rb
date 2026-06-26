@@ -1,12 +1,6 @@
 # frozen_string_literal: true
 
-# Example job that consumes normalized CDC events.
+# Example job that hands normalized CDC events to configured downstream runtimes.
 class UserChangedJob < ApplicationJob
   include CDC::SolidQueue::ProcessorJob
-
-  def process(event)
-    Rails.logger.info(
-      "cdc event #{event.operation} #{event.qualified_table_name} primary_key=#{event.primary_key.inspect}"
-    )
-  end
 end

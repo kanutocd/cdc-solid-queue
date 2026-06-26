@@ -3,6 +3,8 @@
 ## 0.2.0 Unreleased
 
 - Optional downstream processor delegation to `cdc-concurrent` and `cdc-parallel`.
+- Rails example now demonstrates `cdc-concurrent` downstream processing.
+- Benchmark can measure direct downstream delegation overhead.
 
 ## 0.1.2
 
