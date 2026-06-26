@@ -1,8 +1,27 @@
+plugins:
+  - rubocop-rake
+  - rubocop-minitest
+
 AllCops:
-  TargetRubyVersion: 3.2
+  TargetRubyVersion: 3.4
+  NewCops: enable
+  Exclude:
+    - vendor/**/*
+    - tmp/**/*
 
-Style/StringLiterals:
-  EnforcedStyle: double_quotes
+Style/Documentation:
+  Enabled: true
 
-Style/StringLiteralsInInterpolation:
-  EnforcedStyle: double_quotes
+Metrics/BlockLength:
+  Exclude:
+    - test/**/*
+    - "*.gemspec"
+
+Minitest/MultipleAssertions:
+  Max: 5
+
+Metrics/MethodLength:
+  Max: 13
+
+Metrics/CyclomaticComplexity:
+  Max: 10

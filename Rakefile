@@ -1,12 +1,40 @@
 # frozen_string_literal: true
 
-require "bundler/gem_tasks"
-require "minitest/test_task"
+require 'bundler/gem_tasks'
+require 'rake/testtask'
+require 'rubocop/rake_task'
+require 'yard'
 
-Minitest::TestTask.create
+Rake::TestTask.new(:test) do |task|
+  task.libs << 'test'
+  task.pattern = 'test/**/*_test.rb'
+  task.warning = true
+end
 
-require "rubocop/rake_task"
+RuboCop::RakeTask.new(:rubocop) do |task|
+  task.options = ['--cache', 'false']
+end
 
-RuboCop::RakeTask.new
+YARD::Rake::YardocTask.new(:yard)
 
-task default: %i[test rubocop]
+desc 'Enforce complete public API documentation'
+task :yard_coverage do
+  sh 'bundle exec yard stats --list-undoc --compact | tee /tmp/cdc-redis-pro-yard-stats'
+  sh "grep -F '100.00% documented' /tmp/cdc-redis-pro-yard-stats"
+end
+
+namespace :rbs do
+  desc 'Validate signatures and statically check the implementation'
+  task :validate do
+    sh 'bundle exec rbs -I sig -r cdc-core validate'
+    sh 'bundle exec steep check'
+  end
+end
+
+desc 'Run tests with strict line and branch coverage thresholds'
+task :coverage do
+  sh({ 'COVERAGE' => 'true' }, 'bundle exec rake test')
+end
+
+task quality: %i[rubocop coverage rbs:validate yard_coverage]
+task default: :quality

@@ -1,13 +1,18 @@
 # frozen_string_literal: true
 
-source "https://rubygems.org"
+source 'https://rubygems.org'
 
-# Specify your gem's dependencies in cdc-solid-queue.gemspec
 gemspec
 
-gem "irb"
-gem "rake", "~> 13.0"
+gem 'minitest', '~> 6.0'
+gem 'rake', '~> 13.4'
+gem 'rbs', '~> 4.0'
+gem 'rubocop', '~> 1.88'
+gem 'rubocop-minitest', '~> 0.39.1'
+gem 'rubocop-rake', '~> 0.7.1'
+gem 'simplecov', '~> 0.22.0'
+gem 'yard', '~> 0.9.44'
 
-gem "minitest", "~> 5.16"
+gem 'pry', '~> 0.16.0'
 
-gem "rubocop", "~> 1.21"
+gem 'steep', '~> 2.0'
